@@ -1,0 +1,9 @@
+*.dcm
+*.png
+files
+*.pth
+venv
+*.pickle
+src/__pycache__
+tests/__pycache__
+.env

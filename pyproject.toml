@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LungDamageDetectionCLI"
+version = "0.1.0"
+description = "CLI application for training and inferring lung injury detection model"
+authors = [
+    {name = "grottI0", email = "checrnega.bk@gmail.com"},
+]
+dependencies = [
+    "torch==2.2.0",
+    "pydicom==2.4.4",
+    "torchvision==0.17.0",
+    "numpy<2.0.0",
+    "python-dotenv==1.0.1",
+    "tqdm==4.66.2",
+    "scikit-learn==1.4.1.post1",
+]
+requires-python = "==3.10.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.scripts]
+cli = "main:run_cli"
+
+[tool.pdm]
+distribution = true

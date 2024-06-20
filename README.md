@@ -10,12 +10,13 @@ ___
 
 <u>The project depends on python ==3.10.*</u>
 
-Download the project:
+Install from PyPI:
+```shell
+pip install LungDamageDetectionCLI
+```
+Install from repo:
 ```shell
 git clone <repo-name> && cd <project-dir>
-```
-Install project dependencies with pdm package manager:
-```shell
 pdm install
 ```
 
@@ -28,8 +29,8 @@ ___
 <b>Environment Variables</b>
 
     PATH_TO_DATA=  # directory containing dataset 
-    DCM_DATA_DIR=  # directory inside PATH_TO_DATA containing dcm files
-    PNG_DATA_DIR=  # directory inside PATH_TO_DATA containing png files
+    DCM_DIR=  # directory inside PATH_TO_DATA containing dcm files
+    PNG_DIR=  # directory inside PATH_TO_DATA containing png files
     TRAIN_SET=  # number of images for model training
     TEST_SET=  # number of images for model test
     VAL_SET=  # number of images for model validation
@@ -58,7 +59,7 @@ Supported backbone names:
 
 Run CLI app from project dir
 ```shell
-pdm run cli
+pdm run ldd-cli
 ```
 
 This app supports these commands:

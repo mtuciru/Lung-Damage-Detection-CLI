@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42"]
-build-backend = "setuptools.build_meta"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [project]
 name = "LungDamageDetectionCLI"
@@ -23,7 +23,7 @@ readme = "README.md"
 license = {text = "MIT"}
 
 [project.scripts]
-cli = "main:run_cli"
+ldd-cli = "main:run_cli"
 
 [tool.pdm]
 distribution = true

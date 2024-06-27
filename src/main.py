@@ -15,104 +15,81 @@ from model import Unet
 from data import DataSet
 from trainer import Trainer
 from tester import Tester
-from settings import (
-    TRAIN_SET, 
-    TEST_SET, 
-    VAL_SET, 
-    BATCH_SIZE,
-    SAVE_PATH,
-    BACKBONE,
-    OUT_PATH
-)
-
-
-class Command(Enum):
-    train = 'train'
-    test = 'test'
-    inference = 'inference'
-    exit = 'exit'
-    help = 'help'
-
-    @staticmethod
-    def values():
-        return [c.value for c in Command]
+from settings import TrainingSettings, TestSettings, InferenceSettings, ValidationError, Settings, Command
 
 
 class App:
 
     def __init__(self):
-        self.is_dataset_inited = False
-        self.model = Unet(
-            backbone_name=BACKBONE,
-            pretrained=True,
-            classes=1
-        )
-        if os.path.exists(SAVE_PATH):
-            state_dict = torch.load(SAVE_PATH, map_location=torch.device('cpu'))
-            self.model.load_state_dict(state_dict)
+        self.settings: TrainingSettings | TestSettings | InferenceSettings | None = None
+        self.model = None
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model.to(self.device)
         self.dataloader_train, self.dataloader_test, self.dataloader_validate = None, None, None
 
     def _init_dataset(self):
-        dataset = DataSet()
-        ds_train, ds_test, ds_val = torch.utils.data.random_split(dataset, [TRAIN_SET, TEST_SET, VAL_SET])
-        self.dataloader_train = DataLoader(ds_train, batch_size=BATCH_SIZE, num_workers=1, shuffle=True, drop_last=True)
-        self.dataloader_test = DataLoader(ds_test, batch_size=BATCH_SIZE, num_workers=1, shuffle=True, drop_last=True)
-        self.dataloader_validate = DataLoader(ds_val, batch_size=BATCH_SIZE, num_workers=1, shuffle=True, drop_last=True)
-        self.is_dataset_inited = True
+        dataset = DataSet(
+            self.settings.path_to_data,
+            self.settings.dcm_dir,
+            self.settings.png_dir,
+            self.settings.img_size,
+            self.settings.use_augmentation,
+            self.settings.seed
+        )
+        ds_train, ds_test, ds_val = torch.utils.data.random_split(dataset, 
+            [
+                self.settings.train_set, 
+                self.settings.test_set,
+                self.settings.val_set
+            ]
+        )
+        self.dataloader_train = DataLoader(ds_train, batch_size=self.settings.batch_size, num_workers=1, shuffle=True, drop_last=True)
+        self.dataloader_test = DataLoader(ds_test, batch_size=self.settings.batch_size, num_workers=1, shuffle=True, drop_last=True)
+        self.dataloader_validate = DataLoader(ds_val, batch_size=self.settings.batch_size, num_workers=1, shuffle=True, drop_last=True)
 
-    def help(self):
-        print('''
-Lung injury detection cli app.
-              
-Commands:
-* help - print this message
-* exit - close app
-* train - run model training
-* test - run model test
-* inference - detect injuries (only dcm files)
-''')
+    def _init_model(self):
+        self.model = Unet(
+            backbone_name=self.settings.backbone,
+            pretrained=True,
+            classes=1
+        )
+        if os.path.exists(self.settings.save_path):
+            state_dict = torch.load(self.settings.save_path, map_location=torch.device('cpu'))
+            self.model.load_state_dict(state_dict)
+        self.model.to(self.device)
+
+    @property
+    def is_dataset_inited(self):
+        return self.dataloader_test is not None and self.dataloader_train is not None and self.dataloader_validate is not None
 
     @staticmethod
-    def read_command():
-        while True:
-            command = input('>>> ').lower()
-            if command in Command.values():
-                return Command(command)
-            print('\nInvalid Command!\n')
-            continue
-    
-    @staticmethod
-    def read_file_or_dir():
-        while True:
-            path = input('Input dcm file or directory path. Press enter to return: ')
-            if not path:
-                return
-            elif not os.path.exists(path):
-                print('\nThis path does not exists!\n')
-            elif not (is_dir := os.path.isdir(path)) and path[-4::] != '.dcm':
-                print('\nInvalid file! Use only dcm files.\n')
-            else:
-                return path, is_dir
+    def exit():
+        sys.exit()
 
     def train(self):
         if not self.is_dataset_inited:
             self._init_dataset()
+        if self.model is None:
+            self._init_model()
         Trainer(
             model=self.model, 
             device=self.device, 
             train_dataloader=self.dataloader_train,
-            val_dataloader=self.dataloader_validate
+            val_dataloader=self.dataloader_validate,
+            epochs=self.settings.epochs,
+            save_path=self.settings.save_path,
+            lr=self.settings.lr
         ).run()
 
     def test(self):
         if not self.is_dataset_inited:
             self._init_dataset()
+        if self.model is None:
+            self._init_model()
         prec, recall, f1, jac, dice = Tester(
             model=self.model,
             device=self.device,
-            dataloader=self.dataloader_test
+            dataloader=self.dataloader_test,
+            batch_size=self.settings.batch_size
         ).run()
         print(f'''
 Precision: {prec}
@@ -123,17 +100,15 @@ Dice Coefficient: {dice}
 ''')
 
     def inference(self):
+        if self.model is None:
+            self._init_model()
         self.model.eval()
-        path_info = self.read_file_or_dir()
-        if path_info is None:
-            return
-        path, is_dir = path_info
-        if is_dir:
-            for file in glob(f'{path}/*.dcm'):
+        if os.path.isdir(self.settings.input_path):
+            for file in glob(f'{self.settings.input_path}/*.dcm'):
                 self._inference_file(file)
         else:
-            self._inference_file(path)
-    
+            self._inference_file(self.settings.input_path)
+
     def _inference_file(self, path):
         file = dicom.read_file(path).pixel_array
         arr = torch.from_numpy(file)
@@ -148,21 +123,32 @@ Dice Coefficient: {dice}
         arr = arr.to(self.device)
         pred = self.model(arr)
         pred = torch.where(pred > 0.2, 1.0, 0.0)
-        if not os.path.exists(OUT_PATH):
-            os.mkdir(OUT_PATH)
-        torchvision.utils.save_image(pred, f"{OUT_PATH}/{path.split('/')[-1].replace('.dcm', '.png')}")
+        if not os.path.exists(self.settings.output_path):
+            os.mkdir(self.settings.output_path)
+        torchvision.utils.save_image(pred, f"{self.settings.output_path}/{path.split('/')[-1].replace('.dcm', '.png')}")
 
     def run(self):
-        self.help()
-        while True:
-            command = self.read_command()
-            {
-                Command.exit: sys.exit,
-                Command.train: self.train,
-                Command.test: self.test,
-                Command.inference: self.inference,
-                Command.help: self.help
-            }[command]()
+        args = sys.argv[1::]
+        if len(args) < 1 or args[0] not in Command.values():
+            print('Please provide correct subcommand.\n')
+            sys.argv = [sys.argv[0]] + ['-h']
+        try:
+            settings = Settings()
+        except ValidationError:
+            print('Invalid input! Check if you provide all required args according to their types!')
+            self.exit()
+        except Exception:
+            print('Some error occurred! Please check provided args values.')
+            sys.exit()
+        self.settings = settings.current
+        if not isinstance(self.settings, InferenceSettings):
+            self.settings.validate_sub_paths()
+        task = {
+            Command.train: self.train,
+            Command.test: self.test,
+            Command.inference: self.inference
+        }[settings.command]
+        task()
 
 
 def run_cli():

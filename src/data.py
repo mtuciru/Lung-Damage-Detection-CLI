@@ -6,18 +6,24 @@ import torch
 import torchvision
 from torch.utils.data import Dataset
 
-from settings import IMG_SIZE, DCM_DIR, PNG_DIR, PATH_TO_DATA, USE_AUGMENTATION, SEED
-
-
-np.random.seed(SEED)
-
 
 class DataSet(Dataset):
 
-    def __init__(self):
-        self.paths_x = sorted(glob(f'{PATH_TO_DATA}/{DCM_DIR}/*.dcm'))
-        self.paths_y = sorted(glob(f'{PATH_TO_DATA}/{PNG_DIR}/*.png'))
-        self.use_augmentation = USE_AUGMENTATION
+    def __init__(
+            self, 
+            path_to_data: str, 
+            dcm_dir: str,
+            png_dir: str,
+            img_size: int,
+            use_aug: bool,
+            seed: int
+    ):
+        self.paths_x = sorted(glob(f'{path_to_data}/{dcm_dir}/*.dcm'))
+        self.paths_y = sorted(glob(f'{path_to_data}/{png_dir}/*.png'))
+        self.use_augmentation = use_aug
+        if self.use_augmentation:
+            np.random.seed(seed)
+        self.img_size = img_size
 
     def __len__(self):
         return len(self.paths_x)
@@ -29,6 +35,7 @@ class DataSet(Dataset):
 
         if self.use_augmentation:
             x, y = self.__augmentation(x, y)
+            y = self.__normalize(y, False)
 
         x, y = x.float(), y.float()
 
@@ -48,8 +55,7 @@ class DataSet(Dataset):
         x, y = self.__normalize(x, is_dcm=True), self.__normalize(y, is_dcm=False)
         return x, y
 
-    @staticmethod
-    def __normalize(arr, is_dcm):
+    def __normalize(self, arr, is_dcm):
         if is_dcm:
             arr = torch.unsqueeze(arr, dim=0)
             arr[arr < -1024.0] = 0.0
@@ -61,11 +67,10 @@ class DataSet(Dataset):
             arr = arr.float()
             arr = arr / 255.0
             arr = torch.where(arr > 0, 1.0, 0.0)
-            arr = torchvision.transforms.Resize([IMG_SIZE, IMG_SIZE])(arr)
+            arr = torchvision.transforms.Resize([self.img_size, self.img_size])(arr)
         return arr
 
-    @staticmethod
-    def __augmentation(x, y):
+    def __augmentation(self, x, y):
 
         if np.random.random() > 0.5:
             x = torch.fliplr(x)
@@ -77,11 +82,11 @@ class DataSet(Dataset):
             y = torchvision.transforms.functional.rotate(x, choice * 90)
 
         if np.random.random() > 0.5 or True:
-            x = torchvision.transforms.RandomCrop(size=[IMG_SIZE // 2, IMG_SIZE // 2])(x)
-            y = torchvision.transforms.RandomCrop(size=[IMG_SIZE // 2, IMG_SIZE // 2])(y)
+            x = torchvision.transforms.RandomCrop(size=[self.img_size // 2, self.img_size // 2])(x)
+            y = torchvision.transforms.RandomCrop(size=[self.img_size // 2, self.img_size // 2])(y)
 
-            x = torchvision.transforms.Resize([IMG_SIZE, IMG_SIZE])(x)
-            y = torchvision.transforms.Resize([IMG_SIZE, IMG_SIZE])(y)
+            x = torchvision.transforms.Resize([self.img_size, self.img_size])(x)
+            y = torchvision.transforms.Resize([self.img_size, self.img_size])(y)
 
         x = torchvision.transforms.ColorJitter(brightness=0.2, hue=0.2)(x)
 

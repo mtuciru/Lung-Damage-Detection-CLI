@@ -2,25 +2,38 @@
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
+keywords = ["detection", "lung injuries", "dicom", "unet", "pytorch", "torch", "cli", "computer vision", "medicine", "covid-19"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License"
+]
+
 [project]
 name = "LungDamageDetectionCLI"
 version = "0.1.0"
 description = "CLI application for training and inferring lung injury detection model"
 authors = [
-    {name = "grottI0", email = "checrnega.bk@gmail.com"},
+    {name = "grottI0", email = "chernega.bk@gmail.com"},
 ]
 dependencies = [
     "torch==2.2.0",
     "pydicom==2.4.4",
     "torchvision==0.17.0",
     "numpy<2.0.0",
-    "python-dotenv==1.0.1",
     "tqdm==4.66.2",
     "scikit-learn==1.4.1.post1",
+    "pydantic-settings>=2.3.4",
 ]
 requires-python = "==3.10.*"
 readme = "README.md"
-license = {text = "MIT"}
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/mtuciru/Lung-Damage-Detection-CLI"
+Repository = "https://github.com/mtuciru/Lung-Damage-Detection-CLI.git"
 
 [project.scripts]
 ldd-cli = "main:run_cli"

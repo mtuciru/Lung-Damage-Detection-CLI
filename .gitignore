@@ -7,3 +7,5 @@ venv
 src/__pycache__
 tests/__pycache__
 .env
+src/LungDamageDetectionCLI.egg-info/
+.pdm-python

@@ -2,12 +2,6 @@ import torch
 from torch.autograd import Variable
 from tqdm import tqdm
 
-from settings import ( 
-    LR, 
-    N_EPOCHS,
-    SAVE_PATH
-)
-
 
 class Trainer:
 
@@ -29,10 +23,19 @@ class Trainer:
                     return True
             return False
 
-    def __init__(self, model, device, train_dataloader, val_dataloader):
+    def __init__(
+            self, 
+            model, 
+            device, 
+            train_dataloader, 
+            val_dataloader,
+            epochs: int,
+            save_path: str,
+            lr: float
+        ):
         self.model = model
         self.device = device
-        self.optim = torch.optim.Adam(lr=LR, params=model.parameters())
+        self.optim = torch.optim.Adam(lr=lr, params=model.parameters())
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optim, 
             mode='max', 
@@ -45,6 +48,8 @@ class Trainer:
         self.early_stopper = self.EarlyStopper(patience=30)
         self.dl_train = train_dataloader
         self.dl_val = val_dataloader
+        self.epochs = epochs
+        self.save_path = save_path
 
     @staticmethod
     def _tversky(y_true, y_pred, smooth=1, alpha=0.7):
@@ -56,7 +61,7 @@ class Trainer:
         return (true_pos + smooth) / (true_pos + alpha * false_neg + (1 - alpha) * false_pos + smooth)
     
     def run(self):
-        for epoch in tqdm(range(N_EPOCHS)):
+        for epoch in tqdm(range(self.epochs)):
             self.model.train()
             for x, y in self.dl_train:
                 self.optim.zero_grad()
@@ -85,4 +90,4 @@ class Trainer:
 
             if self.early_stopper.early_stop(l):
                 break
-            torch.save(self.model.state_dict(), SAVE_PATH)
+            torch.save(self.model.state_dict(), self.save_path)

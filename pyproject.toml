@@ -1,7 +1,10 @@
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
+[project]
+name = "LungDamageDetectionCLI"
+version = "1.0.0"
+description = "CLI application for training and inferring lung injury detection model"
+authors = [
+    {name = "grottI0", email = "chernega.bk@gmail.com"},
+]
 keywords = ["detection", "lung injuries", "dicom", "unet", "pytorch", "torch", "cli", "computer vision", "medicine", "covid-19"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -11,13 +14,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License"
 ]
 
-[project]
-name = "LungDamageDetectionCLI"
-version = "0.1.0"
-description = "CLI application for training and inferring lung injury detection model"
-authors = [
-    {name = "grottI0", email = "chernega.bk@gmail.com"},
-]
 dependencies = [
     "torch==2.2.0",
     "pydicom==2.4.4",
@@ -40,3 +36,7 @@ ldd-cli = "main:run_cli"
 
 [tool.pdm]
 distribution = true
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
